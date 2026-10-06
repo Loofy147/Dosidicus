@@ -949,5 +949,45 @@ class HeadlessParityTests(unittest.TestCase):
                              MAX_STRENGTH_MULTIPLIER)
 
 
+class PlasticityRotationRegressionTests(unittest.TestCase):
+    """Regression proof for cross-cycle plasticity pair rotation."""
+
+    def test_equal_evidence_pairs_are_not_starved_across_commit_cycles(self):
+        from src.plasticity import PlasticityConfig, PlasticityEngine
+
+        engine = PlasticityEngine(PlasticityConfig(
+            learning_rate=0.1,
+            weight_decay=0.0,
+            pairs_fraction=0.0,
+            min_pairs_per_cycle=1,
+            max_pairs_per_cycle=1,
+            stdp_enabled=False,
+        ))
+        weights = {
+            ('a', 'b'): 0.0,
+            ('a', 'c'): 0.0,
+            ('b', 'c'): 0.0,
+        }
+        neurons = ['a', 'b', 'c']
+
+        updated = []
+        for _ in range(3):
+            for i in range(20):
+                value = 100.0 if i % 2 else 0.0
+                engine.observe(
+                    {'a': value, 'b': value, 'c': value},
+                    neurons,
+                    timestamp=float(i),
+                )
+            result = engine.commit(weights, neurons)
+            updated.append(tuple(result['updated_pairs']))
+
+        self.assertEqual(
+            len({pair for cycle in updated for pair in cycle}),
+            3,
+            "equal-evidence pairs must rotate instead of repeatedly selecting one pair",
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
