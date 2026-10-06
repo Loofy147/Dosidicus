@@ -393,7 +393,7 @@ class PlasticityEngine:
         self.last_commit_time = time.time()
 
         window_samples = self.samples_since_commit
-        self.reset()
+        self.reset(preserve_rotation=True)
 
         return {
             'updated_pairs': updated_pairs,
@@ -402,15 +402,20 @@ class PlasticityEngine:
             'candidate_pairs': len(scored),
         }
 
-    def reset(self) -> None:
-        """Discard all accumulated evidence and rotation history."""
+    def reset(self, preserve_rotation: bool = False) -> None:
+        """Discard accumulated evidence; optionally retain cross-cycle rotation history.
+
+        A commit must preserve the selected pairs so the next commit can deprioritize
+        them. External callers can still request a full reset by leaving the flag false.
+        """
         self._sum_xy.clear()
         self._sum_x.clear()
         self._sum_x2.clear()
         self._count_x.clear()
         self._opportunities.clear()
         self.samples_since_commit = 0
-        self._last_committed = []
+        if not preserve_rotation:
+            self._last_committed = []
 
     def _correlation(self, pair: Pair, sum_xy: float, n: int) -> float:
         """Pearson correlation between the pair over the window, in [-1, 1].
